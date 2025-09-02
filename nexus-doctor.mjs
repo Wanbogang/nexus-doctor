@@ -224,10 +224,10 @@ function summarizeText(res, redact, verbose) {
   else if (res.ntp.offset_s == null) parts.push('• NTP: offset tidak diketahui');
   else parts.push(`• NTP offset: ${res.ntp.offset_s}s (${res.ntp.status})`);
   parts.push(`• CPU: ${res.resources.cpu.cores} cores; Load1: ${res.resources.cpu.load1}`);
-  parts.push(`• Memory: ${fmtBytes(res.resources.mem.free)} bebas / ${fmtBytes(res.resources.mem.total)} total`);
-  if (!res.process.running) parts.push('• Proses nexus-network: tidak berjalan');
+  parts.push(`• Memory: ${fmtBytes(res.resources.mem.free)} free / ${fmtBytes(res.resources.mem.total)} total`);
+  if (!res.process.running) parts.push('• nexus-network process: tidak berjalan');
   else {
-    const basic = `• Proses nexus-network: ${res.process.count} proc; total threads: ${res.process.totalThreads}`;
+    const basic = `• nexus-network process: ${res.process.count} proc; total threads: ${res.process.totalThreads}`;
     if (verbose && res.process.items) {
       for (const it of res.process.items) {
         const cmd = redact ? redactString(it.cmd) : it.cmd;
