@@ -49,3 +49,45 @@ v0 always exits with code 0; rely on `--json` to evaluate check status in automa
 ## Connectivity note
 In some networks (e.g., cloud VPS or Codespaces), `orchestrator.nexus.xyz` on ports **443/8443** may time out due to server-side IP filtering.
 If both ports time out while other 443 endpoints work, request allowlisting of your public IP or try from an allowed network.
+
+---
+
+<p align="left">
+  <a href="https://github.com/Wanbogang/nexus-doctor/releases">
+    <img alt="release" src="https://img.shields.io/github/v/release/Wanbogang/nexus-doctor?label=release">
+  </a>
+  <a href="https://github.com/Wanbogang/nexus-doctor/blob/main/LICENSE">
+    <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
+  </a>
+  <img alt="node" src="https://img.shields.io/badge/Node.js-LTS-blue">
+  <img alt="mode" src="https://img.shields.io/badge/mode-read--only-informational">
+</p>
+
+### Quick example (summary)
+
+
+### Quick example (summary)
+
+$ node ./nexus-doctor.mjs
+Nexus Doctor v0 — summary
+• CLI: nexus-network ✅ vX.Y.Z
+• orchestrator.nexus.xyz:443 ❌ timeout (7000ms)
+• orchestrator.nexus.xyz:8443 ❌ timeout (7000ms)
+• NTP offset: -0.003s (ok)
+• CPU: 4 cores; Load1: 0.12
+• Memory: 5.1 GiB free / 7.8 GiB total
+• nexus-network process: 1 instance(s); total threads: 18
+
+### JSON for automation
+
+$ node ./nexus-doctor.mjs --json | jq '. | {cli, connectivity, ntp, resources, process}'
+{
+"cli": { "found": true, "version": "X.Y.Z" },
+"connectivity": [
+{ "port": 443, "ok": false, "error": "timeout" },
+{ "port": 8443, "ok": false, "error": "timeout" }
+],
+"ntp": { "available": true, "offset_s": -0.003, "status": "ok" },
+"resources": { "cpu": {"cores": 4, "load1": "0.12"}, "mem": {"total": 8.0e9, "free": 5.5e9} },
+"process": { "running": true, "count": 1, "totalThreads": 18 }
+}
