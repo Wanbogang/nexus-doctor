@@ -43,3 +43,9 @@ v0 always exits with code 0; rely on `--json` to evaluate check status in automa
 ## Limitations
 - NTP check relies on ntpdate. If unavailable, it reports as not available.
 - Thread counting uses /proc/<pid>/status (Linux only).
+
+---
+
+## Connectivity note
+In some networks (e.g., cloud VPS or Codespaces), `orchestrator.nexus.xyz` on ports **443/8443** may time out due to server-side IP filtering.
+If both ports time out while other 443 endpoints work, request allowlisting of your public IP or try from an allowed network.
