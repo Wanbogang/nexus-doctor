@@ -1,0 +1,13 @@
+{
+  "name": "nexus-doctor",
+  "version": "0.1.0",
+  "description": "Read-only health checks for Nexus (CLI version, orchestrator connectivity, NTP offset, resources & threads).",
+  "type": "module",
+  "bin": {
+    "nexus-doctor": "./nexus-doctor.mjs"
+  },
+  "scripts": {
+    "doctor": "node ./nexus-doctor.mjs"
+  },
+  "license": "MIT"
+}

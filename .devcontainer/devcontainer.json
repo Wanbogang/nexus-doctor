@@ -1,0 +1,13 @@
+{
+  "name": "Nexus Doctor v0",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y dnsutils netcat-openbsd openssl jq ntpdate && npm ci || true",
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint"],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}
