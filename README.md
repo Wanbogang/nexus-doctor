@@ -63,31 +63,13 @@ If both ports time out while other 443 endpoints work, request allowlisting of y
   <img alt="mode" src="https://img.shields.io/badge/mode-read--only-informational">
 </p>
 
-### Quick example (summary)
-
 
 ### Quick example (summary)
-
-$ node ./nexus-doctor.mjs
-Nexus Doctor v0 — summary
-• CLI: nexus-network ✅ vX.Y.Z
-• orchestrator.nexus.xyz:443 ❌ timeout (7000ms)
-• orchestrator.nexus.xyz:8443 ❌ timeout (7000ms)
-• NTP offset: -0.003s (ok)
-• CPU: 4 cores; Load1: 0.12
-• Memory: 5.1 GiB free / 7.8 GiB total
-• nexus-network process: 1 instance(s); total threads: 18
+```bash
+node ./nexus-doctor.mjs
+```
 
 ### JSON for automation
-
-$ node ./nexus-doctor.mjs --json | jq '. | {cli, connectivity, ntp, resources, process}'
-{
-"cli": { "found": true, "version": "X.Y.Z" },
-"connectivity": [
-{ "port": 443, "ok": false, "error": "timeout" },
-{ "port": 8443, "ok": false, "error": "timeout" }
-],
-"ntp": { "available": true, "offset_s": -0.003, "status": "ok" },
-"resources": { "cpu": {"cores": 4, "load1": "0.12"}, "mem": {"total": 8.0e9, "free": 5.5e9} },
-"process": { "running": true, "count": 1, "totalThreads": 18 }
-}
+```bash
+node ./nexus-doctor.mjs --json | jq '. | {cli, connectivity, ntp, resources, process}'
+```
