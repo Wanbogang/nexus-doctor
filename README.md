@@ -73,3 +73,23 @@ node ./nexus-doctor.mjs
 ```bash
 node ./nexus-doctor.mjs --json | jq '. | {cli, connectivity, ntp, resources, process}'
 ```
+
+## Exit codes (wrapper)
+The helper wrapper `nd-exit.sh` returns:
+- `0`  — OK
+- `10` — CONNECTIVITY_TIMEOUT (likely allowlist needed or endpoint down)
+- `20` — NTP_WARN
+- `21` — NTP_BAD
+
+### Print exit code meaning
+```bash
+./nd-exit.sh --timeout=7000 > /tmp/nd.json; ec=$?
+jq '. | {cli,connectivity,ntp}' /tmp/nd.json
+case "$ec" in
+  0)  echo "status=OK" ;;
+  10) echo "status=CONNECTIVITY_TIMEOUT (likely allowlist needed or endpoint down)" ;;
+  20) echo "status=NTP_WARN" ;;
+  21) echo "status=NTP_BAD" ;;
+  *)  echo "status=UNKNOWN($ec)" ;;
+esac
+
