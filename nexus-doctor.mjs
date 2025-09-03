@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { checkNtp as _checkNtp } from './checks.js';
 import { parseArgs as _parseArgs, printHelp as _printHelp } from './cli.js';
 import { run } from './cmd.js';
 import * as os from 'node:os';
@@ -299,4 +300,10 @@ try {
   printHelp = _printHelp;
   // eslint-disable-next-line no-global-assign
   parseArgs = _parseArgs;
+} catch {}
+
+// --- module overrides (phase-2 modularization) ---
+try {
+  // eslint-disable-next-line no-global-assign
+  checkNtp = _checkNtp;
 } catch {}
