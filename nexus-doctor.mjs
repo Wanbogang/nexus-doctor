@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import os from 'os';
-import fs from 'fs';
-import { exec, execFile } from 'child_process';
-import net from 'net';
-import tls from 'tls';
+import { run } from './cmd.js';
+import * as os from 'node:os';
+import * as fs from 'node:fs';
+import { exec, execFile } from 'node:child_process';
+import * as net from 'node:net';
+import * as tls from 'node:tls';
 
 const HOST = process.env.NEXUS_ORCH_HOST || 'orchestrator.nexus.xyz';
 const PORTS = (process.env.NEXUS_ORCH_PORTS || '443,8443')
@@ -272,3 +273,20 @@ main().catch((e) => {
   console.error('Unexpected error:', e?.message || e);
   process.exitCode = 1;
 });
+
+/** --- Clean help text override (ESM-friendly) --- */
+printHelp = function () {
+  console.log(`Nexus Doctor v0 (read-only)
+
+Usage:
+  nexus-doctor [--json] [--verbose] [--no-redact] [--timeout=ms] [--host=H] [--ports=443,8443]
+
+Checks:
+  • nexus-network CLI version
+  • TLS/TCP connectivity to orchestrator (ports 443,8443)
+  • NTP offset via "ntpdate -q pool.ntp.org"
+  • CPU/memory and nexus-network threads (if running)
+
+Privacy:
+  • Sensitive details (IPs/cmdline) are redacted by default. Use --verbose to show details.`);
+};
