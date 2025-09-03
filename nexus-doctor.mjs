@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { parseArgs as _parseArgs, printHelp as _printHelp } from './cli.js';
 import { run } from './cmd.js';
 import * as os from 'node:os';
 import * as fs from 'node:fs';
@@ -290,3 +291,12 @@ Checks:
 Privacy:
   • Sensitive details (IPs/cmdline) are redacted by default. Use --verbose to show details.`);
 };
+
+// --- module overrides (phase-1 modularization) ---
+try {
+  // re-bind to modular versions if local ones exist
+  // eslint-disable-next-line no-global-assign
+  printHelp = _printHelp;
+  // eslint-disable-next-line no-global-assign
+  parseArgs = _parseArgs;
+} catch {}
