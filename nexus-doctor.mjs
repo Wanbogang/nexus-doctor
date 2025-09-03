@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { checkNtp as _checkNtp } from './checks.js';
+import { fmtBytes as _fmtBytes, redactString as _redactString, redactDeep as _redactDeep } from './utils.js';
 import { parseArgs as _parseArgs, printHelp as _printHelp } from './cli.js';
 import { run } from './cmd.js';
 import * as os from 'node:os';
@@ -306,4 +307,24 @@ try {
 try {
   // eslint-disable-next-line no-global-assign
   checkNtp = _checkNtp;
+} catch {}
+
+// --- module overrides (phase-3 modularization) ---
+try {
+  // eslint-disable-next-line no-global-assign
+  checkConnectivity = _checkConnectivity;
+  // eslint-disable-next-line no-global-assign
+  checkResources = _checkResources;
+  // eslint-disable-next-line no-global-assign
+  checkProcessThreads = _checkProcessThreads;
+} catch {}
+
+try {
+  // utils wiring (only if main file uses these identifiers)
+  // eslint-disable-next-line no-global-assign
+  fmtBytes = _fmtBytes;
+  // eslint-disable-next-line no-global-assign
+  redactString = _redactString;
+  // eslint-disable-next-line no-global-assign
+  redactDeep = _redactDeep;
 } catch {}
