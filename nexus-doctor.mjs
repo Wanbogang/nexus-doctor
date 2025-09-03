@@ -265,7 +265,7 @@ async function main() {
   let result = { host, ports, cli, connectivity, ntp, resources, process: proc, ts: new Date().toISOString() };
   if (args.json) {
     const out = args.redact ? redactDeep(result) : result;
-    console.log(JSON.stringify(out, null, 2));
+    console.log(JSON.stringify((args && args.redact !== false) ? _redactDeep(out) : out, null, 2));
   } else {
     const txt = summarizeText(result, args.redact, args.verbose);
     console.log(args.redact ? redactString(txt) : txt);
@@ -326,5 +326,18 @@ try {
   // eslint-disable-next-line no-global-assign
   redactString = _redactString;
   // eslint-disable-next-line no-global-assign
+  redactDeep = _redactDeep;
+} catch {}
+
+// --- module overrides (re-wire to modular implementations) ---
+try {
+  checkConnectivity = _checkConnectivity;
+  checkResources = _checkResources;
+  checkProcessThreads = _checkProcessThreads;
+  checkNtp = _checkNtp;
+} catch {}
+try {
+  fmtBytes = _fmtBytes;
+  redactString = _redactString;
   redactDeep = _redactDeep;
 } catch {}
