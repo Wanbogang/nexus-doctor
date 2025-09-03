@@ -221,7 +221,7 @@ function summarizeText(res, redact, verbose) {
     }
   }
   if (!res.ntp.available) parts.push('• NTP: ntpdate not available');
-  else if (res.ntp.offset_s == null) parts.push('• NTP: offset tidak diketahui');
+  else if (res.ntp.offset_s == null) parts.push('• NTP: offset unknown');
   else parts.push(`• NTP offset: ${res.ntp.offset_s}s (${res.ntp.status})`);
   parts.push(`• CPU: ${res.resources.cpu.cores} cores; Load1: ${res.resources.cpu.load1}`);
   parts.push(`• Memory: ${fmtBytes(res.resources.mem.free)} free / ${fmtBytes(res.resources.mem.total)} total`);
