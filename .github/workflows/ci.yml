@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install ESLint
+        run: npm install -g eslint
+      - name: Run ESLint
+        run: eslint .
+      - name: Smoke test
+        run: node ./nexus-doctor.mjs --help
