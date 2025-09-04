@@ -1,52 +1,51 @@
 import { parseArgs, printHelp } from './cli.js';
 import { redactString } from './utils.js';
-import {
-  checkCliVersion,
-  checkConnectivity,
-  checkNtp,
-  checkProcessThreads,
-} from './checks.js';
+import * as checks from './checks.js';
+
+// pilih fungsi yang tersedia; jika tidak ada, sediakan stub
+const pick = (...cands) => {
+  for (const f of cands) if (typeof f === 'function') return f;
+  return async () => ({ ok: false, error: 'check not implemented/exported' });
+};
+
+const checkCliVersion = pick(
+  checks.checkCliVersion, checks.cliVersion, checks.cli, checks.default?.checkCliVersion
+);
+const checkConnectivity = pick(
+  checks.checkConnectivity, checks.connectivity, checks.testConnectivity, checks.default?.checkConnectivity
+);
+const checkNtp = pick(
+  checks.checkNtp, checks.ntp, checks.ntpCheck, checks.default?.checkNtp
+);
+const checkProcessThreads = pick(
+  checks.checkProcessThreads, checks.processThreads, checks.procThreads, checks.default?.checkProcessThreads
+);
 
 const args = parseArgs(process.argv.slice(2));
-if (args.help) {
-  printHelp();
-  process.exit(0);
-}
+if (args.help) { printHelp(); process.exit(0); }
 
-// Jalankan semua checks paralel; tangani error per-task
-const [cli, connectivity, ntp, proc] = await Promise.allSettled([
+const settled = await Promise.allSettled([
   checkCliVersion(args),
   checkConnectivity(args),
   checkNtp(args),
   checkProcessThreads(args),
 ]);
-
-const unwrap = (p) =>
-  p.status === 'fulfilled'
-    ? p.value
-    : { ok: false, error: p.reason?.message || String(p.reason) };
+const unwrap = (p) => (p.status === 'fulfilled' ? p.value : { ok: false, error: String(p.reason) });
 
 const result = {
-  cli: unwrap(cli),
-  connectivity: unwrap(connectivity),
-  ntp: unwrap(ntp),
-  process: unwrap(proc),
+  cli: unwrap(settled[0]),
+  connectivity: unwrap(settled[1]),
+  ntp: unwrap(settled[2]),
+  process: unwrap(settled[3]),
 };
 
-if (args.json) {
-  console.log(JSON.stringify(result, null, 2));
-  process.exit(0);
-}
+if (args.json) { console.log(JSON.stringify(result, null, 2)); process.exit(0); }
 
-// Ringkas human-friendly
-const lines = [];
-lines.push(`CLI     : ${result.cli?.ok ? result.cli.version : 'ERROR'}`);
-lines.push(`Connect : ${result.connectivity?.ok ? result.connectivity.summary : 'ERROR'}`);
-lines.push(`NTP     : ${result.ntp?.ok ? result.ntp.summary : 'N/A'}`);
-lines.push(`Process : ${result.process?.ok ? result.process.summary : 'N/A'}`);
+const lines = [
+  `CLI     : ${result.cli?.ok ? result.cli.version : 'ERROR'}`,
+  `Connect : ${result.connectivity?.ok ? result.connectivity.summary : 'ERROR'}`,
+  `NTP     : ${result.ntp?.ok ? result.ntp.summary : 'N/A'}`,
+  `Process : ${result.process?.ok ? result.process.summary : 'N/A'}`,
+];
+console.log(lines.map(l => redactString(l, { noRedact: args.noRedact })).join('\n'));
 
-const output = lines
-  .map((l) => redactString(l, { noRedact: args.noRedact }))
-  .join('\n');
-
-console.log(output);
