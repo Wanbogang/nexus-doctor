@@ -149,3 +149,23 @@ export function checkProcessThreads({ name = 'nexus-network' } = {}) {
   } catch {}
   return { running: count > 0, count, totalThreads };
 }
+// === Tambahan alias/ekspor supaya konsisten dengan nexus-doctor.mjs ===
+
+// Cek versi nexus CLI
+export async function checkCliVersion({ timeout = 5000 } = {}) {
+  const res = await run('nexus-network', ['--version'], { timeout });
+  if (res.ok && res.stdout) {
+    return { ok: true, version: res.stdout.trim() };
+  }
+  return { ok: false, error: res.error || 'nexus-network not found' };
+}
+
+// Placeholder: cek konektivitas TLS/port (nanti bisa diisi runCmd ke net/tls)
+export async function checkConnectivity({ host = 'orchestrator.nexus.xyz', ports = [443,8443], timeout = 5000 } = {}) {
+  return { ok: false, summary: 'connectivity check not implemented yet', host, ports, timeout };
+}
+
+// Placeholder: cek proses nexus-network jalan/tidak
+export async function checkProcessThreads() {
+  return { ok: false, summary: 'process check not implemented yet' };
+}
