@@ -1,36 +1,52 @@
-// cli.js (ESM) — CLI helpers for Nexus Doctor
-export function parseArgs(argv, defaults = { json:false, verbose:false, redact:true, timeout:5000, host:'orchestrator.nexus.xyz', ports:[443,8443] }) {
-  const args = { ...defaults };
-  for (let i = 2; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--json') args.json = true;
-    else if (a === '--verbose') args.verbose = true;
-    else if (a === '--no-redact') args.redact = false;
-    else if (a === '--help' || a === '-h') args.help = true;
-    else if (a.startsWith('--timeout=')) args.timeout = parseInt(a.split('=')[1], 10) || defaults.timeout;
-    else if (a.startsWith('--host=')) args.host = a.split('=')[1];
-    else if (a.startsWith('--ports=')) {
-      args.ports = a.split('=')[1]
+/**
+ * Parsers opsi CLI sederhana, dengan default yang aman.
+ */
+export function parseArgs(argv) {
+  const out = {
+    json: false,
+    verbose: false,
+    noRedact: false,
+    host: 'orchestrator.nexus.xyz',
+    ports: [443, 8443],
+    timeout: 7000,
+    help: false,
+  };
+
+  for (const a of argv) {
+    if (a === '--json') out.json = true;
+    else if (a === '--verbose') out.verbose = true;
+    else if (a === '--no-redact') out.noRedact = true;
+    else if (a === '--help' || a === '-h') out.help = true;
+    else if (a.startsWith('--host=')) out.host = a.slice(7).trim();
+    else if (a.startsWith('--timeout=')) {
+      const t = Number(a.slice(10));
+      out.timeout = Number.isFinite(t) ? Math.max(1000, t) : 7000;
+    } else if (a.startsWith('--ports=')) {
+      const parts = a
+        .slice(8)
         .split(',')
-        .map(p => parseInt(p.trim(), 10))
-        .filter(Boolean);
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0 && n < 65536);
+      if (parts.length) out.ports = parts;
     }
   }
-  return args;
+  return out;
 }
 
 export function printHelp() {
-  console.log(`Nexus Doctor v0 (read-only)
+  console.log(
+`Nexus Doctor v0 (read-only)
 
-Usage:
-  nexus-doctor [--json] [--verbose] [--no-redact] [--timeout=ms] [--host=H] [--ports=443,8443]
+Usage: node ./nexus-doctor.mjs [--json] [--verbose] [--no-redact] [--timeout=ms] [--host=H] [--ports=443,8443]
 
 Checks:
   • nexus-network CLI version
   • TLS/TCP connectivity to orchestrator (ports 443,8443)
-  • NTP offset via "ntpdate -q pool.ntp.org"
+  • NTP offset via ntpdate -q pool.ntp.org
   • CPU/memory and nexus-network threads (if running)
 
 Privacy:
-  • Sensitive details (IPs/cmdline) are redacted by default. Use --verbose to show details.`);
+  • Default redacts sensitive details (IPs/cmdline). Use --verbose to show details.
+`
+  );
 }

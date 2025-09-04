@@ -4,6 +4,7 @@ import * as net from 'node:net';
 import * as dns from 'node:dns/promises';
 import * as os from 'node:os';
 import * as fs from 'node:fs';
+import { fmtBytes } from './utils.js';
 
 const DEFAULT_NTP_SERVER = process.env.NEXUS_NTP_SERVER || 'pool.ntp.org';
 
@@ -58,20 +59,26 @@ function tcpConnect(host, port, timeoutMs) {
 
 /** Parse minimal TLS info from `openssl s_client -brief` */
 function parseOpenSslBrief(stdout) {
-  // Example lines:
-  // "Protocol  : TLSv1.3"
-  // "Cipher    : TLS_AES_256_GCM_SHA384"
   const proto = /Protocol\s*:\s*([^\r\n]+)/i.exec(stdout)?.[1]?.trim() || null;
   const cipher = /Cipher\s*:\s*([^\r\n]+)/i.exec(stdout)?.[1]?.trim() || null;
   return (proto || cipher) ? { protocol: proto, cipher } : null;
 }
 
 /**
- * Connectivity check: per port do TLS (openssl) with timeout; fallback to raw TCP.
- * Returns: Array<{host, port, ok, ms, ip, tls|null, error|null}>
+ * Connectivity check: TLS via openssl (when present), fallback to raw TCP.
+ * Adds DNS A/AAAA (ip4/ip6) info; keeps `ip` for backward-compat.
  */
 export async function checkConnectivity({ host, ports = [443, 8443], timeoutMs = 5000 } = {}) {
   let ip = null;
+  let ip4 = [], ip6 = [];
+  try {
+    const v4 = await dns.resolve4(host);
+    if (Array.isArray(v4)) ip4 = v4;
+  } catch {}
+  try {
+    const v6 = await dns.resolve6(host);
+    if (Array.isArray(v6)) ip6 = v6;
+  } catch {}
   try { ip = (await dns.lookup(host)).address; } catch {}
 
   const out = [];
@@ -79,14 +86,12 @@ export async function checkConnectivity({ host, ports = [443, 8443], timeoutMs =
     const start = Date.now();
     let ok = false, tls = null, error = null, ms;
 
-    // Try TLS first if openssl exists
     const tlsRes = await run('openssl', ['s_client', '-connect', `${host}:${port}`, '-servername', host, '-brief'], { timeoutMs });
     if (tlsRes.ok) {
       ok = true;
       tls = parseOpenSslBrief(tlsRes.stdout || '');
       ms = Date.now() - start;
     } else if ((tlsRes.error || '').includes('ENOENT') || tlsRes.code === 'ENOENT') {
-      // openssl not installed -> fallback to TCP
       const tcp = await tcpConnect(host, port, timeoutMs);
       ok = tcp.ok; error = tcp.error; ms = tcp.ms;
     } else {
@@ -95,18 +100,26 @@ export async function checkConnectivity({ host, ports = [443, 8443], timeoutMs =
       ms = Date.now() - start;
     }
 
-    out.push({ host, port, ok, ms, ip, tls, error });
+    out.push({ host, port, ok, ms, ip, ip4, ip6, tls, error });
   }
   return out;
 }
 
-/** Resources: CPU/mem snapshot */
+/** Resources: CPU/mem snapshot + human-readable bytes */
 export function checkResources() {
   const cores = os.cpus()?.length || 0;
   const load1 = (os.loadavg?.()[0] ?? 0).toFixed(2);
   const total = os.totalmem?.() ?? 0;
   const free = os.freemem?.() ?? 0;
-  return { cpu: { cores, load1 }, mem: { total, free } };
+  return {
+    cpu: { cores, load1 },
+    mem: {
+      total,
+      free,
+      total_h: fmtBytes(total),
+      free_h: fmtBytes(free)
+    }
+  };
 }
 
 /** Process: count `nexus-network` instances and sum their Threads from /proc */

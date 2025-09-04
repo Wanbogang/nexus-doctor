@@ -1,105 +1,52 @@
-#!/usr/bin/env node
 import { parseArgs, printHelp } from './cli.js';
-import { checkNtp, checkConnectivity, checkResources, checkProcessThreads } from './checks.js';
-import { redactDeep, redactString } from './utils.js';
-import { run } from './cmd.js';
+import { redactString } from './utils.js';
+import {
+  checkCliVersion,
+  checkConnectivity,
+  checkNtp,
+  checkProcessThreads,
+} from './checks.js';
 
-const HOST = process.env.NEXUS_ORCH_HOST || 'orchestrator.nexus.xyz';
-const PORTS = (process.env.NEXUS_ORCH_PORTS || '443,8443')
-  .split(',')
-  .map(p => parseInt(p.trim(), 10))
-  .filter(Boolean);
-const DEFAULT_TIMEOUT_MS = parseInt(process.env.NEXUS_TIMEOUT_MS || '5000', 10);
-
-// Lightweight CLI check (read-only)
-async function checkCliVersion({ timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
-  const which = await run('bash', ['-lc', 'command -v nexus-network'], { timeoutMs });
-  const found = which.ok && which.stdout;
-  if (!found) return { found: false, message: 'nexus-network not found in PATH' };
-
-  let version = null;
-  let ver = await run('nexus-network', ['--version'], { timeoutMs });
-  if (!ver.ok) ver = await run('nexus-network', ['version'], { timeoutMs });
-  if (ver.ok) {
-    const m = ver.stdout.match(/(\d+\.\d+\.\d+)/);
-    version = m ? m[1] : ver.stdout.trim();
-  }
-
-  return { found: true, version, path: which.stdout.trim() };
+const args = parseArgs(process.argv.slice(2));
+if (args.help) {
+  printHelp();
+  process.exit(0);
 }
 
-function printSummary(res, args) {
-  const { cli, connectivity, ntp, resources, process } = res;
-  const lines = [];
-  lines.push('Nexus Doctor v0 — summary');
+// Jalankan semua checks paralel; tangani error per-task
+const [cli, connectivity, ntp, proc] = await Promise.allSettled([
+  checkCliVersion(args),
+  checkConnectivity(args),
+  checkNtp(args),
+  checkProcessThreads(args),
+]);
 
-  lines.push(`• CLI: nexus-network ${cli.found ? `✅ ${cli.version || 'found'}` : '❌ (not found)'}`);
+const unwrap = (p) =>
+  p.status === 'fulfilled'
+    ? p.value
+    : { ok: false, error: p.reason?.message || String(p.reason) };
 
-  for (const c of connectivity) {
-    const base = `• ${c.host}:${c.port}`;
-    if (c.ok) {
-      const tls = c.tls
-        ? `TLS ${c.tls.protocol || ''}${c.tls.cipher ? ` ${c.tls.cipher}` : ''}`.trim()
-        : 'connected';
-      lines.push(`${base} ✅ ${tls} (${c.ms}ms)`);
-    } else {
-      lines.push(`${base} ❌ ${c.error || 'error'} (${c.ms}ms)`);
-    }
-  }
+const result = {
+  cli: unwrap(cli),
+  connectivity: unwrap(connectivity),
+  ntp: unwrap(ntp),
+  process: unwrap(proc),
+};
 
-  if (!ntp.available) {
-    lines.push('• NTP: ntpdate not available');
-  } else {
-    const off = (ntp.offset_s === null || ntp.offset_s === undefined) ? '0s' : `${ntp.offset_s}s`;
-    lines.push(`• NTP offset: ${off} (${ntp.status})`);
-  }
-
-  const mem = resources.mem || {};
-  const freeH = mem.free_h || (Number.isFinite(mem.free) ? `${(mem.free/1024/1024/1024).toFixed(1)} GiB` : 'N/A');
-  const totalH = mem.total_h || (Number.isFinite(mem.total) ? `${(mem.total/1024/1024/1024).toFixed(1)} GiB` : 'N/A');
-
-  lines.push(`• CPU: ${resources.cpu?.cores ?? 0} cores; Load1: ${resources.cpu?.load1 ?? '0.00'}`);
-  lines.push(`• Memory: ${freeH} free / ${totalH} total`);
-  lines.push(`• nexus-network process: ${process.count} proc; total threads: ${process.totalThreads}`);
-
-  const out = lines.join('\n');
-  console.log(args.redact ? redactString(out, true) : out);
+if (args.json) {
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(0);
 }
 
-async function main() {
-  const args = parseArgs(process.argv, {
-    json: false,
-    verbose: false,
-    redact: true,
-    timeout: DEFAULT_TIMEOUT_MS,
-    host: HOST,
-    ports: PORTS
-  });
+// Ringkas human-friendly
+const lines = [];
+lines.push(`CLI     : ${result.cli?.ok ? result.cli.version : 'ERROR'}`);
+lines.push(`Connect : ${result.connectivity?.ok ? result.connectivity.summary : 'ERROR'}`);
+lines.push(`NTP     : ${result.ntp?.ok ? result.ntp.summary : 'N/A'}`);
+lines.push(`Process : ${result.process?.ok ? result.process.summary : 'N/A'}`);
 
-  if (args.help) { printHelp(); return; }
+const output = lines
+  .map((l) => redactString(l, { noRedact: args.noRedact }))
+  .join('\n');
 
-  const [cli, connectivity, ntp, resources, proc] = await Promise.all([
-    checkCliVersion({ timeoutMs: args.timeout }),
-    checkConnectivity({ host: args.host || HOST, ports: args.ports || PORTS, timeoutMs: args.timeout }),
-    checkNtp({ timeoutMs: args.timeout }),
-    checkResources(),
-    checkProcessThreads()
-  ]);
-
-  const result = { cli, connectivity, ntp, resources, process: proc };
-
-  if (args.json) {
-    const payload = (args.redact !== false) ? redactDeep(result) : result;
-    console.log(JSON.stringify(payload, null, 2));
-  } else {
-    printSummary(result, args);
-  }
-
-  // v0: always exit 0; wrapper script handles non-zero mapping
-  process.exitCode = 0;
-}
-
-main().catch(e => {
-  console.error('Unexpected error:', e?.message || e);
-  process.exitCode = 1;
-});
+console.log(output);

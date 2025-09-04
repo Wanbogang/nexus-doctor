@@ -93,3 +93,7 @@ case "$ec" in
   *)  echo "status=UNKNOWN($ec)" ;;
 esac
 
+
+#### Notes
+- Memory values include human-readable fields: `.resources.mem.free_h` and `.resources.mem.total_h`.
+- JSON output is redacted by default (IPs and long cmdlines); use `--no-redact` to disable redaction.

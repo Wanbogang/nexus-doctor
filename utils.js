@@ -1,28 +1,54 @@
-// utils.js (ESM) — formatting & redaction helpers
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
-export function fmtBytes(n = 0) {
-  if (!Number.isFinite(n) || n <= 0) return '0 B';
-  const k = 1024, units = ['B','KiB','MiB','GiB','TiB'];
-  let i = Math.min(units.length - 1, Math.max(0, Math.floor(Math.log(n) / Math.log(k))));
-  const val = n / Math.pow(k, i);
-  return `${val >= 10 ? val.toFixed(1) : val.toFixed(2)} ${units[i]}`;
-}
+const pexec = promisify(execFile);
 
-export function redactString(s, enabled = true) {
-  if (!enabled || typeof s !== 'string') return s;
-  let out = s.replace(/\b\d{1,3}(?:\.\d{1,3}){3}\b/g, '[ip]');
-  if (out.length > 120) out = out.slice(0, 40) + '…[redacted]…' + out.slice(-20);
-  return out;
-}
-
-export function redactDeep(v, enabled = true) {
-  if (!enabled) return v;
-  if (typeof v === 'string') return redactString(v, true);
-  if (Array.isArray(v)) return v.map(x => redactDeep(x, true));
-  if (v && typeof v === 'object') {
-    const o = {};
-    for (const k of Object.keys(v)) o[k] = redactDeep(v[k], true);
-    return o;
+/**
+ * Jalankan perintah shell dengan execFile (aman; tanpa shell interpolasi).
+ * Selalu mengembalikan objek normalisasi { ok, code, stdout, stderr, error }
+ */
+export async function runCmd(cmd, args = [], opts = {}) {
+  const options = {
+    timeout: 7000,
+    maxBuffer: 1024 * 1024, // 1MB
+    ...opts,
+  };
+  try {
+    const { stdout, stderr } = await pexec(cmd, args, options);
+    return { ok: true, code: 0, stdout, stderr };
+  } catch (e) {
+    return {
+      ok: false,
+      code: typeof e.code === 'number' ? e.code : -1,
+      stdout: e.stdout || '',
+      stderr: e.stderr || (e.message ?? String(e)),
+      error: e,
+    };
   }
-  return v;
+}
+
+/**
+ * Sederhana: redact IP & arg sensitif; hormati flag noRedact
+ */
+export function redactString(s, { noRedact } = {}) {
+  if (noRedact) return s;
+  return String(s)
+    // IPv4
+    .replace(/\b\d{1,3}(?:\.\d{1,3}){3}\b/g, '[REDACTED_IP]')
+    // token/secret/key di cmdline: --token=xxxx, --secret xxxx, dll
+    .replace(/(--(?:secret|token|key)(?:=|\s+))(\S+)/gi, (_, p1) => `${p1}[REDACTED]`);
+}
+
+/**
+ * Format bytes jadi string human-friendly.
+ */
+export function fmtBytes(n) {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let x = Number(n) || 0;
+  let i = 0;
+  while (x >= 1024 && i < units.length - 1) {
+    x /= 1024;
+    i++;
+  }
+  return `${x.toFixed(1)} ${units[i]}`;
 }
