@@ -7,7 +7,12 @@
     "nexus-doctor": "./nexus-doctor.mjs"
   },
   "scripts": {
+    "lint": "eslint .",
+    "test": "node ./nexus-doctor.mjs --help",
     "doctor": "node ./nexus-doctor.mjs"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^9.34.0"
+  }
 }
