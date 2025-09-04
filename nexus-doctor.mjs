@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { checkNtp as _checkNtp } from './checks.js';
+import { _checkNtp as _checkNtp, _checkConnectivity as _checkConnectivity, _checkResources as _checkResources, _checkProcessThreads as _checkProcessThreads } from './checks.js';
 import { fmtBytes as _fmtBytes, redactString as _redactString, redactDeep as _redactDeep } from './utils.js';
 import { parseArgs as _parseArgs, printHelp as _printHelp } from './cli.js';
 import { run } from './cmd.js';
@@ -148,7 +148,7 @@ function tcpCheck(host, port, useTls, timeout = DEFAULT_TIMEOUT_MS) {
   });
 }
 
-async function checkConnectivity(host, ports, timeout) {
+async function _checkConnectivity(host, ports, timeout) {
   const results = [];
   for (const p of ports) {
     const useTls = (p === 443 || p === 8443);
@@ -158,7 +158,7 @@ async function checkConnectivity(host, ports, timeout) {
   return results;
 }
 
-async function checkNtp(timeout) {
+async function _checkNtp(timeout) {
   const out = await tryExecFile('ntpdate', ['-q', 'pool.ntp.org'], timeout);
   if (!out.ok) return { available: false, error: out.error || out.stderr || 'ntpdate not available' };
   const lines = out.stdout.split(/\n/).filter(Boolean);
@@ -185,7 +185,7 @@ function readProcStatus(pid) {
   } catch { return null; }
 }
 
-async function checkProcessThreads(verbose) {
+async function _checkProcessThreads(verbose) {
   const procs = await sh('pgrep -fa nexus-network');
   if (!procs.ok || !procs.stdout.trim()) return { running: false };
   const lines = procs.stdout.trim().split('\n');
@@ -252,9 +252,9 @@ async function main() {
 
   const [cli, connectivity, ntp, proc] = await Promise.all([
     checkCliVersion(),
-    checkConnectivity(host, ports, timeout),
-    checkNtp(timeout),
-    checkProcessThreads(!!args.verbose)
+    _checkConnectivity(host, ports, timeout),
+    _checkNtp(timeout),
+    _checkProcessThreads(!!args.verbose)
   ]);
 
   const resources = {
@@ -306,17 +306,17 @@ try {
 // --- module overrides (phase-2 modularization) ---
 try {
   // eslint-disable-next-line no-global-assign
-  checkNtp = _checkNtp;
+  _checkNtp = _checkNtp;
 } catch {}
 
 // --- module overrides (phase-3 modularization) ---
 try {
   // eslint-disable-next-line no-global-assign
-  checkConnectivity = _checkConnectivity;
+  _checkConnectivity = _checkConnectivity;
   // eslint-disable-next-line no-global-assign
-  checkResources = _checkResources;
+  _checkResources = _checkResources;
   // eslint-disable-next-line no-global-assign
-  checkProcessThreads = _checkProcessThreads;
+  _checkProcessThreads = _checkProcessThreads;
 } catch {}
 
 try {
@@ -331,10 +331,23 @@ try {
 
 // --- module overrides (re-wire to modular implementations) ---
 try {
-  checkConnectivity = _checkConnectivity;
-  checkResources = _checkResources;
-  checkProcessThreads = _checkProcessThreads;
-  checkNtp = _checkNtp;
+  _checkConnectivity = _checkConnectivity;
+  _checkResources = _checkResources;
+  _checkProcessThreads = _checkProcessThreads;
+  _checkNtp = _checkNtp;
+} catch {}
+try {
+  fmtBytes = _fmtBytes;
+  redactString = _redactString;
+  redactDeep = _redactDeep;
+} catch {}
+
+/* --- rewire to modular implementations (idempotent) --- */
+try {
+  _checkNtp = _checkNtp;
+  _checkConnectivity = _checkConnectivity;
+  _checkResources = _checkResources;
+  _checkProcessThreads = _checkProcessThreads;
 } catch {}
 try {
   fmtBytes = _fmtBytes;
